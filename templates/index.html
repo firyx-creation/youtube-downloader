@@ -3,72 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Video Downloader</title>
+    <title>YT Downloader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <div class="noise"></div>
+    <div class="glow-orb glow-1"></div>
+    <div class="glow-orb glow-2"></div>
+
     <div class="container">
         <header class="header">
-            <h1>🎬 YouTube Downloader</h1>
-            <p>Téléchargez vos vidéos YouTube avec la qualité que vous souhaitez</p>
+            <div class="header-badge">▶ TÉLÉCHARGEUR VIDÉO</div>
+            <h1>YouTube<br><span class="accent">Downloader</span></h1>
+            <p class="subtitle">Qualité HD · Téléchargement direct · Gratuit</p>
         </header>
 
         <main class="main-content">
-            <!-- Section URL Input -->
-            <section class="input-section">
+
+            <!-- URL Input -->
+            <section class="card input-card">
+                <div class="card-label">01 — URL</div>
                 <div class="input-group">
-                    <input 
-                        type="text" 
-                        id="urlInput" 
-                        placeholder="Collez l'URL de votre vidéo YouTube..."
-                        class="url-input"
-                    >
-                    <button id="fetchBtn" class="btn btn-primary">Charger les formats</button>
+                    <div class="input-wrapper">
+                        <span class="input-icon">⟶</span>
+                        <input
+                            type="text"
+                            id="urlInput"
+                            placeholder="Collez votre lien YouTube ici..."
+                            class="url-input"
+                            autocomplete="off"
+                        >
+                        <button class="clear-btn" id="clearBtn" title="Effacer">✕</button>
+                    </div>
+                    <button id="fetchBtn" class="btn btn-fetch">
+                        <span class="btn-text">Analyser</span>
+                        <span class="btn-icon">↗</span>
+                    </button>
                 </div>
                 <div id="errorMessage" class="error-message"></div>
-                <div id="loadingSpinner" class="loading-spinner" style="display: none;">
-                    <div class="spinner"></div>
-                    <p>Chargement des informations de la vidéo...</p>
+
+                <div id="loadingSpinner" class="loading-area" style="display:none;">
+                    <div class="loading-bar"><div class="loading-fill"></div></div>
+                    <span class="loading-label">Analyse en cours…</span>
                 </div>
             </section>
 
-            <!-- Section Video Info & Formats -->
-            <section id="videoSection" class="video-section" style="display: none;">
+            <!-- Video Info + Format Selection -->
+            <section id="videoSection" class="card video-card" style="display:none;">
+                <div class="card-label">02 — VIDÉO</div>
+
                 <div class="video-info">
-                    <img id="thumbnail" src="" alt="Thumbnail" class="thumbnail">
-                    <div class="video-details">
-                        <h2 id="videoTitle"></h2>
-                        <p id="videoDuration" class="duration"></p>
+                    <div class="thumbnail-wrap">
+                        <img id="thumbnail" src="" alt="Thumbnail" class="thumbnail">
+                        <div class="thumb-overlay">
+                            <span class="play-icon">▶</span>
+                        </div>
+                    </div>
+                    <div class="video-meta">
+                        <h2 id="videoTitle" class="video-title"></h2>
+                        <div class="meta-row">
+                            <span id="videoDuration" class="meta-chip">⏱ --:--</span>
+                            <span id="videoChannel" class="meta-chip">📺 —</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Formats Selection -->
-                <div class="formats-container">
-                    <h3>Sélectionnez la qualité 👇</h3>
-                    <div id="formatsList" class="formats-grid">
-                        <!-- Les formats seront insérés ici par JavaScript -->
+                <!-- Quality Selector -->
+                <div class="quality-section">
+                    <div class="card-label">03 — QUALITÉ</div>
+                    <div id="formatsList" class="formats-grid"></div>
+                </div>
+
+                <!-- Download CTA -->
+                <div id="downloadArea" class="download-area" style="display:none;">
+                    <div id="progressContainer" class="progress-wrap" style="display:none;">
+                        <div class="progress-header">
+                            <span id="progressLabel" class="progress-label">Téléchargement…</span>
+                            <span id="progressPercent" class="progress-pct">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div id="progressFill" class="progress-fill"></div>
+                        </div>
+                        <div id="progressDetail" class="progress-detail"></div>
                     </div>
-                </div>
 
-                <!-- Download Button -->
-                <button id="downloadBtn" class="btn btn-success" style="display: none; width: 100%; margin-top: 20px;">
-                    ⬇️ Télécharger
-                </button>
+                    <button id="downloadBtn" class="btn btn-download">
+                        <span class="btn-text">⬇ Télécharger</span>
+                        <span class="btn-sub" id="downloadBtnSub">Sauvegarder dans Téléchargements</span>
+                    </button>
 
-                <div id="downloadStatus" class="download-status" style="display: none;"></div>
-            </section>
-
-            <!-- Downloads List -->
-            <section class="downloads-section">
-                <h3>📂 Fichiers téléchargés</h3>
-                <div id="downloadsList" class="downloads-list">
-                    <p class="empty-message">Aucun téléchargement pour le moment</p>
+                    <div id="downloadStatus" class="status-message" style="display:none;"></div>
                 </div>
             </section>
+
         </main>
 
         <footer class="footer">
-            <p>⚠️ Respectez les droits d'auteur - Cet outil est à usage personnel uniquement</p>
+            <span>Usage personnel uniquement · Respectez les droits d'auteur</span>
         </footer>
     </div>
 

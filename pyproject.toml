@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "youtube-downloader"
+version = "1.0.0"
+description = "A simple YouTube video downloader web app"
+
+[tool.python-setup.entry-points]
+console_scripts = []
+
+[project.optional-dependencies]
+dev = ["pytest"]

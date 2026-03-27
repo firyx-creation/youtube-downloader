@@ -1,252 +1,247 @@
-// États globaux
+// ─── État global ───
 let selectedFormat = null;
 let currentVideoUrl = null;
 
-// Éléments du DOM
-const urlInput = document.getElementById('urlInput');
-const fetchBtn = document.getElementById('fetchBtn');
-const errorMessage = document.getElementById('errorMessage');
+// ─── Éléments DOM ───
+const urlInput       = document.getElementById('urlInput');
+const fetchBtn       = document.getElementById('fetchBtn');
+const clearBtn       = document.getElementById('clearBtn');
+const errorMsg       = document.getElementById('errorMessage');
 const loadingSpinner = document.getElementById('loadingSpinner');
-const videoSection = document.getElementById('videoSection');
-const formatsList = document.getElementById('formatsList');
-const downloadBtn = document.getElementById('downloadBtn');
+const videoSection   = document.getElementById('videoSection');
+const formatsList    = document.getElementById('formatsList');
+const downloadArea   = document.getElementById('downloadArea');
+const downloadBtn    = document.getElementById('downloadBtn');
+const downloadBtnSub = document.getElementById('downloadBtnSub');
 const downloadStatus = document.getElementById('downloadStatus');
-const downloadsList = document.getElementById('downloadsList');
+const progressContainer = document.getElementById('progressContainer');
+const progressFill   = document.getElementById('progressFill');
+const progressPct    = document.getElementById('progressPercent');
+const progressLabel  = document.getElementById('progressLabel');
+const progressDetail = document.getElementById('progressDetail');
 
-// Event Listeners
+// ─── Events ───
 fetchBtn.addEventListener('click', fetchVideoInfo);
-urlInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') fetchVideoInfo();
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') fetchVideoInfo(); });
+urlInput.addEventListener('input', () => {
+    clearBtn.classList.toggle('visible', urlInput.value.length > 0);
 });
-downloadBtn.addEventListener('click', downloadVideo);
+clearBtn.addEventListener('click', () => {
+    urlInput.value = '';
+    clearBtn.classList.remove('visible');
+    urlInput.focus();
+    hideError();
+    videoSection.style.display = 'none';
+});
+downloadBtn.addEventListener('click', startDownload);
 
-// Charger la liste des téléchargements au démarrage
-document.addEventListener('DOMContentLoaded', loadDownloadsList);
-
-/**
- * Récupère les informations de la vidéo et les formats disponibles
- */
+// ─── Fetch info vidéo ───
 async function fetchVideoInfo() {
     const url = urlInput.value.trim();
-    
-    if (!url) {
-        showError('Veuillez entrer une URL YouTube');
-        return;
-    }
+    if (!url) { showError('Veuillez entrer une URL YouTube'); return; }
 
     currentVideoUrl = url;
-    selectedFormat = null;
-    downloadBtn.style.display = 'none';
+    selectedFormat  = null;
 
-    // Afficher le spinner
-    loadingSpinner.style.display = 'block';
-    videoSection.style.display = 'none';
+    fetchBtn.disabled = true;
+    fetchBtn.querySelector('.btn-text').textContent = '…';
+    loadingSpinner.style.display = 'flex';
+    videoSection.style.display   = 'none';
     hideError();
 
     try {
-        const response = await fetch('/api/video-info', {
-            method: 'POST',
+        const res  = await fetch('/api/video-info', {
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url })
+            body:    JSON.stringify({ url }),
         });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Erreur lors de la récupération des informations');
-        }
-
-        const data = await response.json();
-        displayVideoInfo(data);
-
-    } catch (error) {
-        showError(error.message);
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || 'Erreur inconnue');
+        renderVideoInfo(data);
+    } catch (err) {
+        showError('❌ ' + err.message);
     } finally {
+        fetchBtn.disabled = false;
+        fetchBtn.querySelector('.btn-text').textContent = 'Analyser';
         loadingSpinner.style.display = 'none';
     }
 }
 
-/**
- * Affiche les informations de la vidéo et les formats disponibles
- */
-function displayVideoInfo(data) {
-    // Afficher les infos vidéo
-    document.getElementById('thumbnail').src = data.thumbnail;
-    document.getElementById('videoTitle').textContent = data.title;
-    document.getElementById('videoDuration').textContent = `Durée: ${formatDuration(data.duration)}`;
+// ─── Afficher infos vidéo ───
+function renderVideoInfo(data) {
+    document.getElementById('thumbnail').src            = data.thumbnail;
+    document.getElementById('videoTitle').textContent   = data.title;
+    document.getElementById('videoDuration').textContent = '⏱ ' + fmtDuration(data.duration);
+    document.getElementById('videoChannel').textContent  = '📺 ' + (data.channel || '—');
 
-    // Afficher les formats
     formatsList.innerHTML = '';
-    data.formats.forEach(format => {
-        const formatElement = createFormatElement(format);
-        formatsList.appendChild(formatElement);
-    });
+    data.formats.forEach(fmt => formatsList.appendChild(buildFormatCard(fmt)));
 
-    videoSection.style.display = 'block';
+    videoSection.style.display   = 'block';
+    downloadArea.style.display   = 'none';
+    downloadStatus.style.display = 'none';
+
+    // Auto-sélection : préférer 1080p, sinon 720p, sinon meilleur dispo
+    const best =
+        data.formats.find(f => f.type === 'video' && f.height === 1080) ||
+        data.formats.find(f => f.type === 'video' && f.height === 720)  ||
+        data.formats.find(f => f.type === 'video' && f.height > 0)      ||
+        data.formats[0];
+
+    if (best) {
+        const safeId = best.format_id.replace(/[+]/g, '\\+');
+        const bestEl = formatsList.querySelector(`[data-id="${safeId}"]`);
+        if (bestEl) bestEl.click();
+    }
+
+    setTimeout(() => videoSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
 }
 
-/**
- * Crée un élément de format sélectionnable
- */
-function createFormatElement(format) {
+// ─── Badge qualité ───
+function qualityBadge(fmt) {
+    if (fmt.type === 'audio') return '<div class="format-badge badge-audio">AUDIO</div>';
+    const h = fmt.height;
+    if (h >= 2160) return '<div class="format-badge badge-4k">4K</div>';
+    if (h >= 1440) return '<div class="format-badge badge-2k">2K</div>';
+    if (h >= 1080) return '<div class="format-badge badge-hd">FULL HD</div>';
+    if (h >= 720)  return '<div class="format-badge badge-hd">HD</div>';
+    return '';
+}
+
+// ─── Carte format ───
+function buildFormatCard(fmt) {
+    const isAudio = fmt.type === 'audio' || fmt.height <= 0;
     const div = document.createElement('div');
-    div.className = 'format-option';
+    div.className = 'format-option' + (isAudio ? ' audio-option' : '');
+    // Stocker le format_id encodé pour le retrouver avec querySelector
+    div.setAttribute('data-id', fmt.format_id);
+
+    const badge = qualityBadge(fmt);
+    const size  = fmt.filesize > 0 ? (fmt.filesize / 1048576).toFixed(0) + ' MB' : '';
+    const fps   = fmt.fps > 0 && fmt.fps !== 30 ? fmt.fps + 'fps' : '';
+    const merge = fmt.needs_merge ? '<div class="merge-tag">+audio</div>' : '';
+
     div.innerHTML = `
-        <div class="format-resolution">${format.resolution}</div>
-        <div class="format-info">
-            ${format.fps > 0 ? `<div>${format.fps}fps</div>` : ''}
-            ${format.filesize > 0 ? `<div>${(format.filesize / (1024 * 1024)).toFixed(1)} MB</div>` : '<div>Taille inconnue</div>'}
+        ${badge}
+        <div class="format-res">${isAudio ? '🎵' : fmt.resolution}</div>
+        <div class="format-meta">
+            ${fmt.ext ? fmt.ext.toUpperCase() : ''}
+            ${fps  ? '<br>' + fps  : ''}
+            ${size ? '<br>' + size : ''}
         </div>
+        ${merge}
     `;
 
-    div.addEventListener('click', () => selectFormat(format, div));
-
+    div.addEventListener('click', () => selectFormat(fmt, div));
     return div;
 }
 
-/**
- * Sélectionne un format
- */
-function selectFormat(format, element) {
-    // Désélectionner l'ancien format
-    document.querySelectorAll('.format-option').forEach(el => {
-        el.classList.remove('selected');
-    });
+// ─── Sélection format ───
+function selectFormat(fmt, el) {
+    document.querySelectorAll('.format-option').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedFormat = fmt;
 
-    // Sélectionner le nouveau format
-    element.classList.add('selected');
-    selectedFormat = format;
-    downloadBtn.style.display = 'block';
-    downloadStatus.style.display = 'none';
+    const isAudio = fmt.type === 'audio' || fmt.height <= 0;
+    downloadBtnSub.textContent = isAudio
+        ? `Sauvegarder en audio ${fmt.ext?.toUpperCase() || 'M4A'}`
+        : `Télécharger en ${fmt.resolution} · ${fmt.ext?.toUpperCase() || 'MP4'}`;
+
+    downloadArea.style.display      = 'block';
+    downloadStatus.style.display    = 'none';
+    progressContainer.style.display = 'none';
 }
 
-/**
- * Télécharge la vidéo
- */
-async function downloadVideo() {
-    if (!selectedFormat || !currentVideoUrl) {
-        showError('Veuillez sélectionner un format');
-        return;
-    }
+// ─── Lancer le téléchargement ───
+async function startDownload() {
+    if (!selectedFormat || !currentVideoUrl) return;
+
+    const isAudio = selectedFormat.type === 'audio' || selectedFormat.height <= 0;
 
     downloadBtn.disabled = true;
-    downloadBtn.textContent = '⏳ Téléchargement en cours...';
+    downloadBtn.querySelector('.btn-text').textContent = '⏳ Préparation…';
     downloadStatus.style.display = 'none';
+
+    progressContainer.style.display = 'block';
+    progressFill.style.width = '0%';
+    progressPct.textContent  = '0%';
+    progressLabel.textContent  = isAudio ? 'Extraction audio…' : `Téléchargement ${selectedFormat.resolution}…`;
+    progressDetail.textContent = 'Connexion au serveur…';
+
+    let prog = 0;
+    const phases = ['Connexion…', 'Récupération des données…', 'Encodage…', 'Finalisation…'];
+    const interval = setInterval(() => {
+        const step = prog < 30 ? 8 : prog < 60 ? 5 : prog < 85 ? 3 : 1;
+        prog = Math.min(prog + step * Math.random(), 92);
+        progressFill.style.width = prog + '%';
+        progressPct.textContent  = Math.round(prog) + '%';
+        const pi = Math.floor((prog / 100) * phases.length);
+        progressDetail.textContent = phases[Math.min(pi, phases.length - 1)];
+    }, 400);
 
     try {
         const response = await fetch('/api/download', {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                url: currentVideoUrl,
-                format_id: selectedFormat.format_id
-            })
+            body:    JSON.stringify({
+                url:       currentVideoUrl,
+                format_id: selectedFormat.format_id,
+                is_audio:  isAudio,
+            }),
         });
 
+        clearInterval(interval);
+
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Erreur lors du téléchargement');
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Erreur serveur');
         }
 
-        const data = await response.json();
-        showDownloadSuccess(data.message);
-        
-        // Recharger la liste des téléchargements
-        setTimeout(loadDownloadsList, 1000);
+        progressFill.style.width   = '100%';
+        progressPct.textContent    = '100%';
+        progressDetail.textContent = 'Téléchargement vers votre appareil…';
 
-    } catch (error) {
-        showDownloadError(error.message);
+        const blob = await response.blob();
+        const cd   = response.headers.get('Content-Disposition') || '';
+        const nm   = cd.match(/filename="?([^"]+)"?/);
+        const filename = nm ? decodeURIComponent(nm[1]) : (isAudio ? 'audio.m4a' : 'video.mp4');
+
+        const a    = document.createElement('a');
+        a.href     = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+
+        setTimeout(() => {
+            progressContainer.style.display = 'none';
+            showStatus('success', '✅ Téléchargement réussi ! Le fichier est dans vos Téléchargements.');
+        }, 600);
+
+    } catch (err) {
+        clearInterval(interval);
+        progressContainer.style.display = 'none';
+        showStatus('error', '❌ ' + err.message);
     } finally {
         downloadBtn.disabled = false;
-        downloadBtn.textContent = '⬇️ Télécharger';
+        downloadBtn.querySelector('.btn-text').textContent = '⬇ Télécharger';
     }
 }
 
-/**
- * Récupère et affiche la liste des téléchargements
- */
-async function loadDownloadsList() {
-    try {
-        const response = await fetch('/api/downloads');
-        if (!response.ok) throw new Error('Erreur lors de la récupération des téléchargements');
-
-        const data = await response.json();
-        displayDownloadsList(data.files);
-    } catch (error) {
-        console.error('Erreur:', error);
-    }
-}
-
-/**
- * Affiche la liste des fichiers téléchargés
- */
-function displayDownloadsList(files) {
-    if (files.length === 0) {
-        downloadsList.innerHTML = '<p class="empty-message">Aucun téléchargement pour le moment</p>';
-        return;
-    }
-
-    downloadsList.innerHTML = files.map(file => `
-        <div class="download-item">
-            <div class="download-item-info">
-                <div class="download-item-name">📥 ${escapeHtml(file.name)}</div>
-                <div class="download-item-size">${file.size}</div>
-            </div>
-        </div>
-    `).join('');
-}
-
-/**
- * Affiche un message d'erreur
- */
-function showError(message) {
-    errorMessage.textContent = message;
-    errorMessage.classList.add('show');
-}
-
-/**
- * Cache le message d'erreur
- */
-function hideError() {
-    errorMessage.classList.remove('show');
-}
-
-/**
- * Affiche un message de succès de téléchargement
- */
-function showDownloadSuccess(message) {
-    downloadStatus.className = 'download-status success';
-    downloadStatus.textContent = '✅ ' + message;
+// ─── Helpers ───
+function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.add('show'); }
+function hideError()    { errorMsg.classList.remove('show'); }
+function showStatus(type, msg) {
+    downloadStatus.className   = 'status-message ' + type;
+    downloadStatus.textContent = msg;
     downloadStatus.style.display = 'block';
 }
-
-/**
- * Affiche un message d'erreur de téléchargement
- */
-function showDownloadError(message) {
-    downloadStatus.className = 'download-status error';
-    downloadStatus.textContent = '❌ ' + message;
-    downloadStatus.style.display = 'block';
-}
-
-/**
- * Formate la durée en format HH:MM:SS
- */
-function formatDuration(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-
-    if (hours > 0) {
-        return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    }
-    return `${minutes}:${String(secs).padStart(2, '0')}`;
-}
-
-/**
- * Échappe les caractères HTML pour éviter les injections XSS
- */
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+function fmtDuration(secs) {
+    if (!secs) return '--:--';
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = Math.floor(secs % 60);
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${m}:${String(s).padStart(2,'0')}`;
 }

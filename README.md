@@ -45,12 +45,16 @@ Une application web simple et élégante pour télécharger des vidéos YouTube 
 
 1. **Lancez l'application**
    ```bash
-   python app.py
+   # Windows
+   python run.py
+   
+   # macOS/Linux
+   python3 run.py
    ```
 
 2. **Ouvrez votre navigateur**
    ```
-   http://localhost:5000
+   http://127.0.0.1:5000
    ```
 
 3. **Téléchargez une vidéo**
@@ -63,14 +67,19 @@ Une application web simple et élégante pour télécharger des vidéos YouTube 
 
 ```
 youtube-downloader/
-├── app.py                 # Backend Flask
-├── requirements.txt       # Dépendances Python
+├── api/
+│   └── index.py          # Backend Flask (compatible Vercel)
 ├── templates/
 │   └── index.html        # Page HTML principale
 ├── static/
 │   ├── style.css         # Styles CSS
 │   └── script.js         # Logique JavaScript
-└── downloads/            # Dossier pour les vidéos téléchargées
+├── run.py                # Script de lancement local
+├── requirements.txt      # Dépendances Python
+├── vercel.json          # Configuration Vercel
+├── pyproject.toml       # Configuration du projet
+├── .python-version      # Version Python supportée
+└── downloads/           # Dossier pour les vidéos téléchargées
 ```
 
 ## 🔧 Configuration
@@ -108,9 +117,21 @@ DOWNLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'downloads')
 ## 📦 Dépendances principales
 
 - **Flask** - Framework web
-- **Flask-CORS** - Gestion des requêtes CORS
-- **yt-dlp** - Téléchargement de vidéos YouTube
+- **Flask-CORS** - Gestion des requêtes CFlask simple
+- Les formats vidéo sont filtrés pour inclure vidéo + audio
+- L'interface est responsive et fonctionne sur mobile
+- Compatible avec le déploiement sur Vercel (via `api/index.py`)
 
+## 🌐 Déploiement sur Vercel
+
+L'application est configurée pour fonctionner sur Vercel :
+
+1. Créez un compte sur [vercel.com](https://vercel.com)
+2. Connectez votre repository GitHub
+3. Vercel détectera automatiquement la configuration et déploiera l'application
+4. Consultez les logs si le build échoue : `vercel logs`
+
+**Note:** Sur Vercel, les fichiers téléchargés ne persisteront pas entre les déploiements (stockage éphémère). Pour une solution persistante, envisagez d'utiliser AWS S3 ou similaire.
 ## 📝 Notes de développement
 
 - L'application utilise une architecture flask simple
