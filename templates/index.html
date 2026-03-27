@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Video Downloader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎬 YouTube Downloader</h1>
+            <p>Téléchargez vos vidéos YouTube avec la qualité que vous souhaitez</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Section URL Input -->
+            <section class="input-section">
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="urlInput" 
+                        placeholder="Collez l'URL de votre vidéo YouTube..."
+                        class="url-input"
+                    >
+                    <button id="fetchBtn" class="btn btn-primary">Charger les formats</button>
+                </div>
+                <div id="errorMessage" class="error-message"></div>
+                <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Chargement des informations de la vidéo...</p>
+                </div>
+            </section>
+
+            <!-- Section Video Info & Formats -->
+            <section id="videoSection" class="video-section" style="display: none;">
+                <div class="video-info">
+                    <img id="thumbnail" src="" alt="Thumbnail" class="thumbnail">
+                    <div class="video-details">
+                        <h2 id="videoTitle"></h2>
+                        <p id="videoDuration" class="duration"></p>
+                    </div>
+                </div>
+
+                <!-- Formats Selection -->
+                <div class="formats-container">
+                    <h3>Sélectionnez la qualité 👇</h3>
+                    <div id="formatsList" class="formats-grid">
+                        <!-- Les formats seront insérés ici par JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Download Button -->
+                <button id="downloadBtn" class="btn btn-success" style="display: none; width: 100%; margin-top: 20px;">
+                    ⬇️ Télécharger
+                </button>
+
+                <div id="downloadStatus" class="download-status" style="display: none;"></div>
+            </section>
+
+            <!-- Downloads List -->
+            <section class="downloads-section">
+                <h3>📂 Fichiers téléchargés</h3>
+                <div id="downloadsList" class="downloads-list">
+                    <p class="empty-message">Aucun téléchargement pour le moment</p>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>⚠️ Respectez les droits d'auteur - Cet outil est à usage personnel uniquement</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
